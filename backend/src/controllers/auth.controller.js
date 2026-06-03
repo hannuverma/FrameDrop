@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs")
 
 
 async function registerUser(req, res){
-    const{username, email, password, role = "user"} = req.body;
+    const{username, email, password, about = " "} = req.body;
 
     const isUserAlreadyExists = await userModel.findOne({
         $or: [
@@ -23,12 +23,11 @@ async function registerUser(req, res){
         username,
         email,
         password : hash,
-        role
+        about
     });
 
     const token = jwt.sign({
         id: user._id,
-        role: user.role,
     },  process.env.JWT_SECRET)
 
     res.cookie("token", token)
@@ -39,7 +38,6 @@ async function registerUser(req, res){
             id: user._id,
             username: user.username,
             email: user.email,
-            role: user.role
         }
     });
 }
@@ -67,11 +65,18 @@ async function loginUser(req, res){
     if(!isPasswordValid){
         return res.status(401).json({message: "Invalid password"})
     }
-    const token = jwt.sign({
-        id: user._id
-    }, process.env.JWT_SECRET)
+    const token = jwt.sign(
+        { id: user._id }, 
+        process.env.JWT_SECRET, 
+        { expiresIn: "7d" }
+    );
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
-    res.cookie("token", token)
+    res.cookie("token", token, {
+        maxAge: sevenDays,
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === "production"
+    });
 
     return res.status(200).json({
         message: "User logged in successfully",
@@ -79,7 +84,6 @@ async function loginUser(req, res){
             id: user._id,
             username: user.username,
             email: user.email,
-            role: user.role
         }
     })
 }

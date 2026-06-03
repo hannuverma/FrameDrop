@@ -1,22 +1,23 @@
 const roomModel = require("../models/room.model")
 const jwt = require("jsonwebtoken")
 const userModel = require("../models/user.model")
-
+const bcrypt = require("bcryptjs")
 
 async function createRoom(req, res){
     try{
-        const {name, description = " "} = req.body;
+        const {name, description = " ", password} = req.body;
 
         const owner = req.user.id;
 
         if(!name){
             return res.status(400).json({message: "Room name is required"});
         }
-
+        const hash = await bcrypt.hash(password, 10)
         const newRoom = new roomModel({
             name,
             owner,
             description,
+            password:hash,
             members:[owner],
             admins:[owner]
        })
@@ -44,6 +45,8 @@ async function joinRoom(req, res){
         const {id, password} = req.body;
         const userId = req.user.id;
 
+
+
         if(!id || !password){
             return res.status(400).json({message: "Room id and password are required"});
         }
@@ -52,13 +55,14 @@ async function joinRoom(req, res){
         if(!room){
             return res.status(404).json({message: "Room not found"});
         }
-
-        if(room.password !== password){
+        const isPasswordValid = await bcrypt.compare(password, room.password)
+        if(!isPasswordValid){
             return res.status(401).json({message: "Invalid password"});
         }
 
-        if(room.members.includes(userId)){
-            return res.status(400).json({message: "User is already a member of this room"});
+        const isAlreadyMember = room.members.some(memberId => memberId.toString() === userId);
+        if (isAlreadyMember) {
+            return res.status(400).json({ message: "User is already a member of this room" });
         }
 
         await roomModel.updateOne(
@@ -83,26 +87,21 @@ async function joinRoom(req, res){
 
 async function removeMember(req, res){
     try {
-        const { roomId, userId } = req.body;
+        const { userId } = req.body;
         const currentUser = req.user.id; 
 
-        if (!roomId || !userId) {
+        if (!userId) {
             return res.status(400).json({ message: "Room id and user id are required" });
         }
 
-        const room = await roomModel.findById(roomId);
-        if (!room) {
-            return res.status(404).json({ message: "Room not found" });
-        }
-        const isAdmin = room.admins.some(adminId => adminId.toString() === currentUser);
-        const isOwner = room.owner && room.owner.toString() === currentUser;
-
-        if (!isOwner && !isAdmin) {
-            return res.status(403).json({ message: "You are not authorized to remove members from this room" });
-        }
+        const room = req.room
 
         if (userId === currentUser) {
             return res.status(400).json({ message: "You cannot remove yourself from the room" });
+        }
+
+        if (room.owner.toString() === userId) {
+            return res.status(403).json({ message: "You cannot remove the owner of the room" });
         }
 
         const isMember = room.members.some(memberId => memberId.toString() === userId);
@@ -131,22 +130,9 @@ async function removeMember(req, res){
 
 async function updateSettings(req, res){
     try{
-        const {roomId} = req.body;
         const { isUploadOpen, allowMembersToInvite, maxPhotosPerUser } = req.body;
-        const requesterId = req.user.id;
         
-        const room = await roomModel.findById(roomId);
-
-        if(!room){
-            return res.status(404).json({message: "Room not found"});
-        }
-
-        const isAdmin = room.admins.some(adminId => adminId.toString() === requesterId);
-        const isOwner = room.owner && room.owner.toString() === requesterId;
-
-        if(!isOwner && !isAdmin){
-            return res.status(403).json({message: "You are not authorized to update settings for this room"});
-        }
+        const room = req.room
 
         if (isUploadOpen !== undefined) room.settings.isUploadOpen = isUploadOpen;
         if (allowMembersToInvite !== undefined) room.settings.allowMembersToInvite = allowMembersToInvite;
@@ -166,4 +152,119 @@ async function updateSettings(req, res){
 }
 
 
-module.exports = {createRoom, joinRoom, removeMember, updateSettings}
+async function getRoomDetails(req, res){
+    try{
+        const { roomId } = req.params;
+        const room = await roomModel.findById(roomId).populate('members', 'username email');
+        if (!room) {
+            return res.status(404).json({ message: "Room not found" });
+        }
+        return res.status(200).json({
+            room
+        })
+    }catch(error){
+        console.error(error);
+        res.status(500).json({message: "Internal server error"});
+    }
+}
+
+async function getAllUsersRooms(req, res){
+    try{
+        const userId = req.user.id;
+        const rooms = await roomModel.find({members: userId});
+        return res.status(200).json({
+            rooms
+        })
+    }catch(error){
+        console.error(error);
+        res.status(500).json({message: "Internal server error"});
+    }
+}
+
+async function deleteRoom(req, res){
+    try{
+        const roomId = req.body.roomId;
+
+        if(!roomId){
+            return res.status(400).json({message: "Room id is required"});
+        }
+
+        const room = await roomModel.findByIdAndDelete(roomId);
+        if (!room) {
+            return res.status(404).json({ message: "Room not found" });
+        }
+
+        await userModel.updateMany(
+            { rooms: roomId },
+            { $pull: { rooms: roomId } }
+        );
+        
+        return res.status(200).json({
+            message: "Room deleted successfully"
+        })
+    }catch(error){
+        console.error(error);
+        res.status(500).json({message: "Internal server error"});
+    }
+}
+
+async function makeAdmin(req, res){
+    try{
+        const { userId } = req.body;
+        const room = req.room;
+
+        if(!userId){
+            return res.status(400).json({message: "User id is required"});
+        }
+
+        if(room.admins.includes(userId)){
+            return res.status(400).json({message: "User is already an admin"});
+        }
+
+        const isMember = room.members.some(memberId => memberId.toString() === userId);
+        if (!isMember) {
+            return res.status(400).json({ message: "User is not a member of this room" });
+        }
+
+        await roomModel.updateOne(
+            { _id: room._id },
+            { $addToSet: { admins: userId } }
+        );
+
+        return res.status(200).json({message: "User is now an admin"});
+    }catch(error){
+        console.error(error);
+        res.status(500).json({message: "Internal server error"});
+    }
+}
+
+async function makeMember(req, res){
+    try{
+        const { userId } = req.body;
+        const room = req.room;
+
+        if(!userId){
+            return res.status(400).json({message: "User id is required"});
+        }
+
+        if (room.owner.toString() === userId) {
+            return res.status(403).json({ message: "Cannot demote the owner of the room" });
+        }
+
+        if(!room.admins.includes(userId)){
+            return res.status(400).json({message: "User is not an admin"});
+        }
+
+        await roomModel.updateOne(
+            { _id: room._id },
+            { $pull: { admins: userId } }
+        );
+
+        return res.status(200).json({message: "Admin successfully demoted to member"});
+    }catch(error){
+        console.error(error);
+        res.status(500).json({message: "Internal server error"});
+    }
+}
+
+module.exports = {createRoom, joinRoom, removeMember, updateSettings, getRoomDetails, getAllUsersRooms, deleteRoom, makeAdmin, makeMember}
