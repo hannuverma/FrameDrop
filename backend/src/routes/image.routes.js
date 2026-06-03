@@ -6,7 +6,7 @@ const { uploadImage, getRoomImages, deleteImage } = require("../controllers/imag
 
 const router = express.Router();
 
-router.post("/upload", protect, isMember, upload.single("image"), uploadImage);
+router.post("/upload", protect, upload.single("image"), isMember, uploadImage);
 router.get("/:roomId", protect, getRoomImages);
 router.delete("/:imageId", protect, deleteImage);
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import useAuthStore from '../store/useAuthStore';
-import { Plus, Users, Search } from 'lucide-react';
+import { Plus, Users, Search, ArrowRight, X } from 'lucide-react';
 
 export default function Dashboard() {
   const [myRooms, setMyRooms] = useState([]);
@@ -11,13 +11,11 @@ export default function Dashboard() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const navigate = useNavigate();
 
-  // Create Form State
   const [createName, setCreateName] = useState('');
   const [createDesc, setCreateDesc] = useState('');
   const [createPassword, setCreatePassword] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
 
-  // Join Form State
   const [joinId, setJoinId] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
@@ -28,9 +26,9 @@ export default function Dashboard() {
     try {
       const res = await axios.get('/room/get-users-rooms');
       setMyRooms(res.data.rooms || []);
-      setLoading(false);
     } catch (error) {
       console.error(error);
+    } finally {
       setLoading(false);
     }
   };
@@ -42,9 +40,10 @@ export default function Dashboard() {
     return 'Member';
   };
 
-  useEffect(() => {
-    fetchRooms();
-  }, []);
+  const getBadgeClass = (d) =>
+    d === 'Owner' ? 'badge-owner' : d === 'Admin' ? 'badge-admin' : 'badge-member';
+
+  useEffect(() => { fetchRooms(); }, []);
 
   const handleCreateRoom = async (e) => {
     e.preventDefault();
@@ -56,6 +55,7 @@ export default function Dashboard() {
         password: createPassword
       });
       setShowCreateModal(false);
+      setCreateName(''); setCreateDesc(''); setCreatePassword('');
       navigate(`/room/${res.data.room._id}`);
     } catch (error) {
       alert(error.response?.data?.message || 'Error creating room');
@@ -73,6 +73,7 @@ export default function Dashboard() {
         password: joinPassword
       });
       setShowJoinModal(false);
+      setJoinId(''); setJoinPassword('');
       navigate(`/room/${res.data.room._id}`);
     } catch (error) {
       alert(error.response?.data?.message || 'Error joining room');
@@ -82,51 +83,55 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="container">
-      <div className="d-flex justify-between items-center mb-6">
-        <h2>Your Rooms</h2>
-        <div className="d-flex gap-4">
-          <button onClick={() => setShowJoinModal(true)} className="d-flex items-center gap-2" style={{ background: 'var(--bg-color-light)', border: '1px solid var(--glass-border)' }}>
-            <Search size={18} /> Join Room
+    <>
+      <div className="dashboard-header animate-fade-in-up">
+        <h1 className="dashboard-title">Your Rooms</h1>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn btn-secondary" onClick={() => setShowJoinModal(true)}>
+            <Search size={16} /> Join Room
           </button>
-          <button onClick={() => setShowCreateModal(true)} className="d-flex items-center gap-2">
-            <Plus size={18} /> Create Room
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+            <Plus size={16} /> Create Room
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-10">Loading your rooms...</div>
+        <div className="rooms-grid stagger">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="skeleton" style={{ height: '160px' }} />
+          ))}
+        </div>
       ) : myRooms.length === 0 ? (
-        <div className="glass-panel text-center py-10" style={{ padding: '4rem 2rem' }}>
-          <Users size={48} color="var(--text-muted)" style={{ margin: '0 auto', marginBottom: '1rem' }} />
-          <h3>No rooms to display</h3>
-          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Create or join a room to start sharing images.</p>
+        <div className="glass empty-state animate-fade-in-up">
+          <div className="empty-state-icon">
+            <Users size={32} color="var(--text-tertiary)" />
+          </div>
+          <h3>No rooms yet</h3>
+          <p>Create a room or join one using a Room ID and password.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+        <div className="rooms-grid stagger">
           {myRooms.map(room => {
             const designation = getDesignation(room);
             return (
-              <div key={room._id} className="glass-panel animate-fade-in" style={{ padding: '1.5rem' }}>
-                <div className="d-flex justify-between items-center mb-2">
-                  <h3 style={{ margin: 0 }}>{room.name}</h3>
-                  <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: designation === 'Owner' ? 'rgba(239, 68, 68, 0.2)' : designation === 'Admin' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(148, 163, 184, 0.2)', color: designation === 'Owner' ? '#fca5a5' : designation === 'Admin' ? '#fcd34d' : '#cbd5e1', borderRadius: '1rem', fontWeight: 'bold' }}>
-                    {designation}
-                  </span>
+              <div
+                key={room._id}
+                className="glass room-card"
+                onClick={() => navigate(`/room/${room._id}`)}
+              >
+                <div className="room-card-header">
+                  <span className="room-card-name">{room.name}</span>
+                  <span className={`badge ${getBadgeClass(designation)}`}>{designation}</span>
                 </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                  {room.description || 'No description provided'}
-                </p>
-                <div className="d-flex justify-between items-center mt-4">
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {room.members?.length || 1} Member(s)
+                <p className="room-card-desc">{room.description || 'No description'}</p>
+                <div className="room-card-footer">
+                  <span className="room-card-meta">
+                    <Users size={13} /> {room.members?.length || 1} member{(room.members?.length || 1) !== 1 ? 's' : ''}
                   </span>
-                  <button 
-                    onClick={() => navigate(`/room/${room._id}`)} 
-                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
-                  >
-                    Enter Room
+                  <button className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.75rem' }}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/room/${room._id}`); }}>
+                    Open <ArrowRight size={13} />
                   </button>
                 </div>
               </div>
@@ -137,25 +142,30 @@ export default function Dashboard() {
 
       {/* Create Room Modal */}
       {showCreateModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '500px' }}>
-            <h3 className="mb-4">Create New Room</h3>
-            <form onSubmit={handleCreateRoom} className="d-flex flex-col gap-4">
+        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="glass modal-card" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 className="modal-title" style={{ marginBottom: 0 }}>Create Room</h2>
+              <button className="btn-ghost" onClick={() => setShowCreateModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleCreateRoom} className="modal-form" style={{ marginTop: '1rem' }}>
               <div>
-                <label className="mb-2" style={{ display: 'block' }}>Room Name</label>
-                <input required value={createName} onChange={e => setCreateName(e.target.value)} />
+                <label className="input-label">Room Name</label>
+                <input className="input-field" required value={createName} onChange={e => setCreateName(e.target.value)} placeholder="My awesome room" />
               </div>
               <div>
-                <label className="mb-2" style={{ display: 'block' }}>Description</label>
-                <input value={createDesc} onChange={e => setCreateDesc(e.target.value)} />
+                <label className="input-label">Description <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
+                <input className="input-field" value={createDesc} onChange={e => setCreateDesc(e.target.value)} placeholder="What's this room about?" />
               </div>
               <div>
-                <label className="mb-2" style={{ display: 'block' }}>Room Password</label>
-                <input required type="password" value={createPassword} onChange={e => setCreatePassword(e.target.value)} />
+                <label className="input-label">Password</label>
+                <input className="input-field" required type="password" value={createPassword} onChange={e => setCreatePassword(e.target.value)} placeholder="Set a password for the room" />
               </div>
-              <div className="d-flex justify-between mt-4">
-                <button type="button" className="danger" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                <button type="submit" disabled={createLoading}>{createLoading ? 'Creating...' : 'Create Room'}</button>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={createLoading}>
+                  {createLoading ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Creating…</> : 'Create Room'}
+                </button>
               </div>
             </form>
           </div>
@@ -164,26 +174,31 @@ export default function Dashboard() {
 
       {/* Join Room Modal */}
       {showJoinModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '500px' }}>
-            <h3 className="mb-4">Join Room</h3>
-            <form onSubmit={handleJoinRoom} className="d-flex flex-col gap-4">
+        <div className="modal-overlay" onClick={() => setShowJoinModal(false)}>
+          <div className="glass modal-card" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 className="modal-title" style={{ marginBottom: 0 }}>Join Room</h2>
+              <button className="btn-ghost" onClick={() => setShowJoinModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleJoinRoom} className="modal-form" style={{ marginTop: '1rem' }}>
               <div>
-                <label className="mb-2" style={{ display: 'block' }}>Room ID</label>
-                <input required value={joinId} onChange={e => setJoinId(e.target.value)} />
+                <label className="input-label">Room ID</label>
+                <input className="input-field" required value={joinId} onChange={e => setJoinId(e.target.value)} placeholder="Paste the room ID here" />
               </div>
               <div>
-                <label className="mb-2" style={{ display: 'block' }}>Room Password</label>
-                <input required type="password" value={joinPassword} onChange={e => setJoinPassword(e.target.value)} />
+                <label className="input-label">Password</label>
+                <input className="input-field" required type="password" value={joinPassword} onChange={e => setJoinPassword(e.target.value)} placeholder="Enter room password" />
               </div>
-              <div className="d-flex justify-between mt-4">
-                <button type="button" className="danger" onClick={() => setShowJoinModal(false)}>Cancel</button>
-                <button type="submit" disabled={joinLoading}>{joinLoading ? 'Joining...' : 'Join Room'}</button>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowJoinModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={joinLoading}>
+                  {joinLoading ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Joining…</> : 'Join Room'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

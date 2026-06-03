@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, ArrowRight } from 'lucide-react';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -23,7 +23,7 @@ export default function Register() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
+
     try {
       await register(formData);
       navigate('/');
@@ -35,75 +35,76 @@ export default function Register() {
   };
 
   return (
-    <div className="container d-flex justify-center items-center" style={{ minHeight: '80vh' }}>
-      <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '400px' }}>
-        <div className="text-center mb-6">
-          <div className="d-flex justify-center mb-4">
-            <div style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '1rem', borderRadius: '50%' }}>
-              <UserPlus size={32} color="var(--primary)" />
-            </div>
-          </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Create Account</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Join FrameDrop to start sharing</p>
+    <div className="auth-page">
+      <div className="glass auth-card animate-fade-in-up">
+        <div className="auth-icon">
+          <UserPlus size={26} color="var(--accent-primary-hover)" />
         </div>
+        <h1 className="auth-title">Create account</h1>
+        <p className="auth-subtitle">Join FrameDrop and start sharing</p>
 
-        {error && (
-          <div className="mb-4" style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', borderLeft: '4px solid var(--danger)', color: 'var(--danger)', borderRadius: '4px' }}>
-            {error}
-          </div>
-        )}
+        {error && <div className="auth-error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="d-flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="auth-form">
           <div>
-            <label className="mb-2" style={{ display: 'block', fontSize: '0.875rem' }}>Username</label>
-            <input 
-              type="text" 
+            <label className="input-label">Username</label>
+            <input
+              className="input-field"
+              type="text"
               name="username"
-              value={formData.username} 
-              onChange={handleChange} 
+              value={formData.username}
+              onChange={handleChange}
               placeholder="johndoe"
-              required 
+              required
             />
           </div>
           <div>
-            <label className="mb-2" style={{ display: 'block', fontSize: '0.875rem' }}>Email</label>
-            <input 
-              type="email" 
+            <label className="input-label">Email</label>
+            <input
+              className="input-field"
+              type="email"
               name="email"
-              value={formData.email} 
-              onChange={handleChange} 
+              value={formData.email}
+              onChange={handleChange}
               placeholder="john@example.com"
-              required 
+              required
             />
           </div>
           <div>
-            <label className="mb-2" style={{ display: 'block', fontSize: '0.875rem' }}>Password</label>
-            <input 
-              type="password" 
+            <label className="input-label">Password</label>
+            <input
+              className="input-field"
+              type="password"
               name="password"
-              value={formData.password} 
-              onChange={handleChange} 
+              value={formData.password}
+              onChange={handleChange}
               placeholder="••••••••"
-              required 
+              required
             />
           </div>
           <div>
-            <label className="mb-2" style={{ display: 'block', fontSize: '0.875rem' }}>About (Optional)</label>
-            <textarea 
+            <label className="input-label">About <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
+            <textarea
+              className="input-field"
               name="about"
-              value={formData.about} 
-              onChange={handleChange} 
+              value={formData.about}
+              onChange={handleChange}
               placeholder="Tell us about yourself"
               rows="2"
+              style={{ resize: 'vertical' }}
             />
           </div>
-          <button type="submit" disabled={loading} className="mt-2" style={{ width: '100%' }}>
-            {loading ? 'Creating...' : 'Create Account'}
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', marginTop: '0.5rem' }}>
+            {loading ? (
+              <><div className="spinner" style={{ width: 16, height: 16, borderWidth: '2px' }} /> Creating…</>
+            ) : (
+              <>Create Account <ArrowRight size={16} /></>
+            )}
           </button>
         </form>
 
-        <p className="text-center mt-6" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Already have an account? <Link to="/login" style={{ fontWeight: '600' }}>Sign in</Link>
+        <p className="auth-footer">
+          Already have an account? <Link to="/login">Sign in</Link>
         </p>
       </div>
     </div>

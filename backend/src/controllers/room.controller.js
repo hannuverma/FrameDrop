@@ -1,7 +1,20 @@
 const roomModel = require("../models/room.model")
-const jwt = require("jsonwebtoken")
 const userModel = require("../models/user.model")
 const bcrypt = require("bcryptjs")
+
+async function health(req, res){
+    try{
+        return res.status(200).json({
+            status: "healthy"
+        })
+    }catch(error){
+        console.error(error);
+        return res.status(500).json({
+            status: "unhealthy",
+            message: "Internal server error"
+        })
+    }
+}
 
 async function createRoom(req, res){
     try{
@@ -267,4 +280,4 @@ async function makeMember(req, res){
     }
 }
 
-module.exports = {createRoom, joinRoom, removeMember, updateSettings, getRoomDetails, getAllUsersRooms, deleteRoom, makeAdmin, makeMember}
+module.exports = {createRoom, joinRoom, removeMember, updateSettings, getRoomDetails, getAllUsersRooms, deleteRoom, makeAdmin, makeMember, health}

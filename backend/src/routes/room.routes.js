@@ -3,7 +3,7 @@ const express = require("express")
 
 const {protect} = require("../middlewares/auth.middleware")
 const {isAdmin, isOwner} = require("../middlewares/room.middleware")
-const {createRoom, joinRoom, removeMember, updateSettings, getRoomDetails, getAllUsersRooms, deleteRoom, makeAdmin, makeMember} = roomController
+const {createRoom, joinRoom, removeMember, updateSettings, getRoomDetails, getAllUsersRooms, deleteRoom, makeAdmin, makeMember, health} = roomController
 const router = express.Router()
 
 router.post("/create", protect, createRoom);
@@ -15,5 +15,6 @@ router.get("/get-room-details/:roomId", protect, getRoomDetails)
 router.post("/delete-room", protect, isOwner, deleteRoom)
 router.post("/make-admin", protect, isAdmin, makeAdmin)
 router.post("/make-member", protect, isAdmin, makeMember)
+router.get("/health", health)
 module.exports = router
 
