@@ -12,15 +12,8 @@ const useAuthStore = create((set) => ({
   
   checkAuth: async () => {
     try {
-      // In a real app we would have an endpoint like GET /api/auth/me to get current user.
-      // Since there's no such endpoint, we will assume user state from successful login.
-      // Wait, let's keep it simple: if there's no auth check endpoint, we'll rely on localstorage or just memory state.
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        set({ user: JSON.parse(userStr), isAuthenticated: true, isLoading: false });
-      } else {
-        set({ user: null, isAuthenticated: false, isLoading: false });
-      }
+      const res = await axios.get('/auth/me');
+      set({ user: res.data.user, isAuthenticated: true, isLoading: false });
     } catch (error) {
       set({ user: null, isAuthenticated: false, isLoading: false });
     }

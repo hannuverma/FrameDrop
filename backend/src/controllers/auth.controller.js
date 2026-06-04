@@ -88,4 +88,23 @@ async function loginUser(req, res){
     })
 }
 
-module.exports = {registerUser, loginUser}
+async function checkAuth(req, res){
+    try {
+        const user = await userModel.findById(req.user.id).select("-password");
+        if(!user){
+            return res.status(404).json({message: "User not found"});
+        }
+        return res.status(200).json({
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+            }
+        });
+    } catch(error) {
+        console.error("Check auth error:", error);
+        res.status(500).json({message: "Internal server error"});
+    }
+}
+
+module.exports = {registerUser, loginUser, checkAuth}

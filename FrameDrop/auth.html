@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auth · Private Rooms</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: rgba(24, 24, 27, 0.6);
+      --surface-solid: #18181b;
+      --fg: #fafafa;
+      --muted: #a1a1aa;
+      --border: rgba(255, 255, 255, 0.1);
+      --accent: #a855f7;
+      --accent-hover: #9333ea;
+      --accent-soft: rgba(168, 85, 247, 0.15);
+      
+      --font-display: 'Quicksand', system-ui, sans-serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; border: none; background: none; }
+    input { font: inherit; outline: none; }
+    
+    /* Layout */
+    .split-layout {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+    }
+    
+    .pane-visual {
+      flex: 1.2;
+      position: relative;
+      overflow: hidden;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .pane-form {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      position: relative;
+      background: var(--bg);
+      z-index: 10;
+      border-left: 1px solid var(--border);
+    }
+
+    @media (max-width: 900px) {
+      .split-layout { flex-direction: column-reverse; }
+      .pane-visual { display: none; } /* Hide on mobile to focus on auth */
+      .pane-form { flex: 1; border-left: none; }
+    }
+
+    /* Form Components */
+    .auth-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 40px;
+      background: var(--surface);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff, #a1a1aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .auth-subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 32px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .input-field {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      transition: all 0.2s ease;
+    }
+
+    .input-field:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+    
+    .input-field::placeholder { color: #52525b; }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .toggle-text {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .toggle-text button {
+      color: var(--fg);
+      font-weight: 500;
+      margin-left: 6px;
+    }
+    .toggle-text button:hover { color: var(--accent); text-decoration: underline; }
+
+    /* Collage */
+    .collage-container {
+      position: relative;
+      width: 150%;
+      height: 150%;
+      transform: rotate(-8deg);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .polaroid {
+      background: #fff;
+      padding: 8px 8px 24px 8px;
+      border-radius: 4px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+      will-change: transform;
+    }
+
+    .polaroid img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 2px;
+      background: #000;
+    }
+
+  </style>
+  <!-- React & Framer Motion -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { motion, AnimatePresence } = window.Motion;
+
+    // High-contrast film style placeholder images
+    const IMAGES = [
+      "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&q=80&w=400", // Party
+      "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&q=80&w=400", // Neon
+      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=400", // Nightlife
+      "https://images.unsplash.com/photo-1493225457124-a1a2a4af3045?auto=format&fit=crop&q=80&w=400", // Music
+      "https://images.unsplash.com/photo-1557761469-f29c6e082855?auto=format&fit=crop&q=80&w=400", // Fire spark
+      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=400", // Studio mic
+      "https://images.unsplash.com/photo-1526405786016-53d71221b22e?auto=format&fit=crop&q=80&w=400", // Vintage film
+      "https://images.unsplash.com/photo-1508739773402-3ce9cef24102?auto=format&fit=crop&q=80&w=400", // Skateboard
+      "https://images.unsplash.com/photo-1485872299829-c673f5194813?auto=format&fit=crop&q=80&w=400", // Disco
+      "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=400", // Film camera
+      "https://images.unsplash.com/photo-1519677100203-a0e668c92439?auto=format&fit=crop&q=80&w=400", // Bokeh
+      "https://images.unsplash.com/photo-1478147427282-58a87a120781?auto=format&fit=crop&q=80&w=400", // Retro neon
+    ];
+
+    const AuthScreen = () => {
+      const [isLogin, setIsLogin] = useState(true);
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [username, setUsername] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        // Transition to lobby (in real app, authenticate first)
+        window.location.href = 'lobby.html';
+      };
+
+      return (
+        <div className="split-layout">
+          <div className="pane-visual">
+            <motion.div 
+              className="collage-container"
+              animate={{ x: ["-5%", "-15%"], y: ["-5%", "-15%"] }}
+              transition={{ repeat: Infinity, repeatType: "reverse", duration: 30, ease: "linear" }}
+            >
+              {IMAGES.map((src, i) => {
+                // Randomize heights and positions slightly to feel organic
+                const randHeight = 250 + Math.random() * 150;
+                const yOffset = (i % 3) * 40;
+                return (
+                  <motion.div 
+                    key={i} 
+                    className="polaroid"
+                    style={{ height: randHeight, marginTop: yOffset }}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.1, type: 'spring' }}
+                    whileHover={{ scale: 1.05, rotate: 2, zIndex: 10 }}
+                  >
+                    <img src={src} alt="Memory" />
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </div>
+
+          <div className="pane-form">
+            <motion.div 
+              className="auth-card"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, type: "spring" }}
+            >
+              <h1 className="brand-title">FlashRoom</h1>
+              <p className="auth-subtitle">Drop photos. Keep 'em private.</p>
+
+              <form onSubmit={handleSubmit}>
+                <AnimatePresence mode="popLayout">
+                  {!isLogin && (
+                    <motion.div
+                      key="username"
+                      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="field-group"
+                      style={{ marginBottom: 0 }}
+                    >
+                      <input 
+                        type="text" 
+                        placeholder="Username" 
+                        className="input-field"
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
+                        required={!isLogin}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="field-group">
+                  <input 
+                    type="email" 
+                    placeholder="Email address" 
+                    className="input-field"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                  />
+                  <input 
+                    type="password" 
+                    placeholder="Password" 
+                    className="input-field"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <motion.button 
+                  type="submit" 
+                  className="btn-primary"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {isLogin ? "Log In" : "Sign Up"}
+                </motion.button>
+              </form>
+
+              <div className="toggle-text">
+                {isLogin ? "Don't have an account?" : "Already have an account?"}
+                <button type="button" onClick={() => setIsLogin(!isLogin)}>
+                  {isLogin ? "Sign up" : "Log in"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AuthScreen />);
+  </script>
+</body>
+</html>

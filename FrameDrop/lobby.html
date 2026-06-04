@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lobby · Private Rooms</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: rgba(24, 24, 27, 0.6);
+      --surface-solid: #18181b;
+      --surface-hover: #27272a;
+      --fg: #fafafa;
+      --muted: #a1a1aa;
+      --border: rgba(255, 255, 255, 0.1);
+      --accent: #a855f7;
+      --accent-hover: #9333ea;
+      --accent-soft: rgba(168, 85, 247, 0.15);
+      
+      --font-display: 'Quicksand', system-ui, sans-serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; border: none; background: none; }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(9, 9, 11, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+
+    .top-nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: grid;
+      place-items: center;
+      font-weight: 600;
+      font-size: 16px;
+      color: #fff;
+    }
+
+    .welcome-text { font-size: 15px; font-weight: 500; }
+    .btn-logout { font-size: 14px; color: var(--muted); transition: color 0.2s; }
+    .btn-logout:hover { color: var(--fg); }
+
+    /* Main Dashboard */
+    .dashboard-content { padding: 48px 0 80px; }
+    
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      margin-bottom: 24px;
+      font-weight: 700;
+    }
+
+    /* Primary Actions */
+    .action-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 56px;
+    }
+
+    @media (max-width: 768px) {
+      .action-cards { grid-template-columns: 1fr; }
+    }
+
+    .magnetic-action {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      text-align: left;
+      width: 100%;
+    }
+
+    .magnetic-action:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent-soft);
+    }
+
+    .action-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius-md);
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+    }
+    
+    .action-icon svg { width: 32px; height: 32px; }
+
+    .action-text h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      margin-bottom: 4px;
+      color: var(--fg);
+    }
+
+    .action-text p {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0;
+    }
+
+    /* Room Grid */
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .room-card {
+      position: relative;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      aspect-ratio: 4 / 3;
+      text-decoration: none;
+      display: block;
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
+
+    .room-cover {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .room-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.1) 100%);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .room-card:hover .room-cover {
+      transform: scale(1.05);
+    }
+
+    .room-name {
+      font-family: var(--font-display);
+      font-size: 24px;
+      color: #fff;
+      margin: 0 0 8px 0;
+      font-weight: 700;
+    }
+
+    .role-badge {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #fff;
+    }
+
+    .role-owner { background: var(--accent); }
+    .role-admin { background: rgba(59, 130, 246, 0.8); }
+
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+    const { motion, useMotionValue, useSpring, useTransform } = window.Motion;
+
+    // Dummy data
+    const ROOMS = [
+      { id: '1', name: 'Ibiza Weekend', role: 'Owner', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=800' },
+      { id: '2', name: 'Graduation 2026', role: 'Admin', image: 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&q=80&w=800' },
+      { id: '3', name: 'Tokyo Film', role: 'Member', image: 'https://images.unsplash.com/photo-1542051812-ba32e15c6d40?auto=format&fit=crop&q=80&w=800' },
+      { id: '4', name: 'Camping Trip', role: 'Member', image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&q=80&w=800' }
+    ];
+
+    const MagneticButton = ({ children, onClick }) => {
+      const x = useMotionValue(0);
+      const y = useMotionValue(0);
+      
+      const springX = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
+      const springY = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
+
+      const handleMouseMove = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        x.set((e.clientX - centerX) * 0.15);
+        y.set((e.clientY - centerY) * 0.15);
+      };
+
+      const handleMouseLeave = () => {
+        x.set(0);
+        y.set(0);
+      };
+
+      return (
+        <motion.button
+          className="magnetic-action"
+          onClick={onClick}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          style={{ x: springX, y: springY }}
+          whileTap={{ scale: 0.98 }}
+        >
+          {children}
+        </motion.button>
+      );
+    };
+
+    const RoomCard = ({ room, index }) => {
+      const x = useMotionValue(0);
+      const y = useMotionValue(0);
+      const springX = useSpring(x, { stiffness: 300, damping: 30 });
+      const springY = useSpring(y, { stiffness: 300, damping: 30 });
+      
+      const rotateX = useTransform(springY, [-0.5, 0.5], ["7deg", "-7deg"]);
+      const rotateY = useTransform(springX, [-0.5, 0.5], ["-7deg", "7deg"]);
+
+      const handleMouseMove = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const xPct = mouseX / width - 0.5;
+        const yPct = mouseY / height - 0.5;
+        x.set(xPct);
+        y.set(yPct);
+      };
+
+      const handleMouseLeave = () => {
+        x.set(0);
+        y.set(0);
+      };
+
+      const roleClass = room.role === 'Owner' ? 'role-owner' : room.role === 'Admin' ? 'role-admin' : '';
+
+      return (
+        <motion.a 
+          href={`room.html?id=${room.id}`}
+          className="room-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.1, duration: 0.5, type: 'spring' }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          style={{ rotateX, rotateY }}
+          whileHover={{ zIndex: 10, boxShadow: "0 24px 48px rgba(0,0,0,0.5)" }}
+        >
+          <img src={room.image} alt={room.name} className="room-cover" />
+          <div className="room-overlay">
+            <span className={`role-badge ${roleClass}`}>{room.role}</span>
+            <h3 className="room-name">{room.name}</h3>
+          </div>
+        </motion.a>
+      );
+    };
+
+    const LobbyScreen = () => {
+      return (
+        <div>
+          <header className="top-nav">
+            <div className="container">
+              <div className="user-profile">
+                <div className="avatar">A</div>
+                <span className="welcome-text">Hey, Alex</span>
+              </div>
+              <button className="btn-logout" onClick={() => window.location.href = 'auth.html'}>Log Out</button>
+            </div>
+          </header>
+
+          <main className="container dashboard-content">
+            <div className="action-cards">
+              <MagneticButton onClick={() => alert("Open Create Room Modal")}>
+                <div className="action-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                </div>
+                <div className="action-text">
+                  <h3>Create a New Room</h3>
+                  <p>Start a new private photo dump</p>
+                </div>
+              </MagneticButton>
+
+              <MagneticButton onClick={() => alert("Open Join Room Modal")}>
+                <div className="action-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                </div>
+                <div className="action-text">
+                  <h3>Join a Room</h3>
+                  <p>Enter with a room ID and password</p>
+                </div>
+              </MagneticButton>
+            </div>
+
+            <h2 className="section-title">Your Rooms</h2>
+            
+            <div className="room-grid">
+              {ROOMS.map((room, i) => (
+                <RoomCard key={room.id} room={room} index={i} />
+              ))}
+            </div>
+          </main>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<LobbyScreen />);
+  </script>
+</body>
+</html>

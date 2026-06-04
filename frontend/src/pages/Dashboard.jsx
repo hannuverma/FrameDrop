@@ -2,7 +2,92 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import useAuthStore from '../store/useAuthStore';
-import { Plus, Users, Search, ArrowRight, X } from 'lucide-react';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+
+const MagneticButton = ({ children, onClick }) => {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  
+  const springX = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
+  const springY = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    x.set((e.clientX - centerX) * 0.15);
+    y.set((e.clientY - centerY) * 0.15);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.button
+      className="magnetic-action"
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ x: springX, y: springY }}
+      whileTap={{ scale: 0.98 }}
+    >
+      {children}
+    </motion.button>
+  );
+};
+
+const RoomCard = ({ room, index, designation, onClick }) => {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 300, damping: 30 });
+  const springY = useSpring(y, { stiffness: 300, damping: 30 });
+  
+  const rotateX = useTransform(springY, [-0.5, 0.5], ["7deg", "-7deg"]);
+  const rotateY = useTransform(springX, [-0.5, 0.5], ["-7deg", "7deg"]);
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const xPct = mouseX / width - 0.5;
+    const yPct = mouseY / height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  const roleClass = designation === 'Owner' ? 'role-owner' : designation === 'Admin' ? 'role-admin' : '';
+  // Random placeholder image if none exists
+  const bgImage = `https://images.unsplash.com/photo-${1514525253161 + index}?auto=format&fit=crop&q=80&w=800`;
+
+  return (
+    <motion.a 
+      onClick={onClick}
+      className="room-card"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1, duration: 0.5, type: 'spring' }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ rotateX, rotateY, cursor: 'pointer' }}
+      whileHover={{ zIndex: 10, boxShadow: "0 24px 48px rgba(0,0,0,0.5)" }}
+    >
+      <img src={bgImage} alt={room.name} className="room-cover" />
+      <div className="room-overlay">
+        <span className={`role-badge ${roleClass}`}>{designation}</span>
+        <h3 className="room-name">{room.name}</h3>
+      </div>
+    </motion.a>
+  );
+};
 
 export default function Dashboard() {
   const [myRooms, setMyRooms] = useState([]);
@@ -20,7 +105,7 @@ export default function Dashboard() {
   const [joinPassword, setJoinPassword] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
 
-  const user = useAuthStore(state => state.user);
+  const { user, logout } = useAuthStore();
 
   const fetchRooms = async () => {
     try {
@@ -39,9 +124,6 @@ export default function Dashboard() {
     if (room.admins?.includes(user.id)) return 'Admin';
     return 'Member';
   };
-
-  const getBadgeClass = (d) =>
-    d === 'Owner' ? 'badge-owner' : d === 'Admin' ? 'badge-admin' : 'badge-member';
 
   useEffect(() => { fetchRooms(); }, []);
 
@@ -83,122 +165,119 @@ export default function Dashboard() {
   };
 
   return (
-    <>
-      <div className="dashboard-header animate-fade-in-up">
-        <h1 className="dashboard-title">Your Rooms</h1>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className="btn btn-secondary" onClick={() => setShowJoinModal(true)}>
-            <Search size={16} /> Join Room
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} /> Create Room
-          </button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="rooms-grid stagger">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="skeleton" style={{ height: '160px' }} />
-          ))}
-        </div>
-      ) : myRooms.length === 0 ? (
-        <div className="glass empty-state animate-fade-in-up">
-          <div className="empty-state-icon">
-            <Users size={32} color="var(--text-tertiary)" />
+    <div>
+      <header className="top-nav">
+        <div className="container">
+          <div className="user-profile">
+            <div className="avatar">{user?.username?.[0]?.toUpperCase() || 'U'}</div>
+            <span className="welcome-text">Hey, {user?.username}</span>
           </div>
-          <h3>No rooms yet</h3>
-          <p>Create a room or join one using a Room ID and password.</p>
+          <button className="btn-logout" onClick={logout}>Log Out</button>
         </div>
-      ) : (
-        <div className="rooms-grid stagger">
-          {myRooms.map(room => {
-            const designation = getDesignation(room);
-            return (
-              <div
-                key={room._id}
-                className="glass room-card"
-                onClick={() => navigate(`/room/${room._id}`)}
-              >
-                <div className="room-card-header">
-                  <span className="room-card-name">{room.name}</span>
-                  <span className={`badge ${getBadgeClass(designation)}`}>{designation}</span>
-                </div>
-                <p className="room-card-desc">{room.description || 'No description'}</p>
-                <div className="room-card-footer">
-                  <span className="room-card-meta">
-                    <Users size={13} /> {room.members?.length || 1} member{(room.members?.length || 1) !== 1 ? 's' : ''}
-                  </span>
-                  <button className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.75rem' }}
-                    onClick={(e) => { e.stopPropagation(); navigate(`/room/${room._id}`); }}>
-                    Open <ArrowRight size={13} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+      </header>
+
+      <main className="container dashboard-content">
+        <div className="action-cards">
+          <MagneticButton onClick={() => setShowCreateModal(true)}>
+            <div className="action-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path></svg>
+            </div>
+            <div className="action-text">
+              <h3>Create a New Room</h3>
+              <p>Start a new private photo dump</p>
+            </div>
+          </MagneticButton>
+
+          <MagneticButton onClick={() => setShowJoinModal(true)}>
+            <div className="action-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+            </div>
+            <div className="action-text">
+              <h3>Join a Room</h3>
+              <p>Enter with a room ID and password</p>
+            </div>
+          </MagneticButton>
         </div>
-      )}
+
+        <h2 className="section-title">Your Rooms</h2>
+        
+        {loading ? (
+          <div className="room-grid">
+            <div className="skeleton" style={{ height: 200 }}></div>
+            <div className="skeleton" style={{ height: 200 }}></div>
+          </div>
+        ) : myRooms.length === 0 ? (
+          <div className="empty-state">
+            <h3>No rooms yet</h3>
+            <p>Create a room or join one to get started.</p>
+          </div>
+        ) : (
+          <div className="room-grid">
+            {myRooms.map((room, i) => (
+              <RoomCard 
+                key={room._id} 
+                room={room} 
+                index={i} 
+                designation={getDesignation(room)}
+                onClick={() => navigate(`/room/${room._id}`)} 
+              />
+            ))}
+          </div>
+        )}
+      </main>
 
       {/* Create Room Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="glass modal-card" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h2 className="modal-title" style={{ marginBottom: 0 }}>Create Room</h2>
-              <button className="btn-ghost" onClick={() => setShowCreateModal(false)}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleCreateRoom} className="modal-form" style={{ marginTop: '1rem' }}>
-              <div>
-                <label className="input-label">Room Name</label>
-                <input className="input-field" required value={createName} onChange={e => setCreateName(e.target.value)} placeholder="My awesome room" />
-              </div>
-              <div>
-                <label className="input-label">Description <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
-                <input className="input-field" value={createDesc} onChange={e => setCreateDesc(e.target.value)} placeholder="What's this room about?" />
-              </div>
-              <div>
-                <label className="input-label">Password</label>
-                <input className="input-field" required type="password" value={createPassword} onChange={e => setCreatePassword(e.target.value)} placeholder="Set a password for the room" />
+          <motion.div 
+            className="modal-card" 
+            onClick={e => e.stopPropagation()}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+          >
+            <h2 className="modal-title">Create Room</h2>
+            <form onSubmit={handleCreateRoom}>
+              <div className="field-group">
+                <input className="input-field" required value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Room Name" />
+                <input className="input-field" value={createDesc} onChange={e => setCreateDesc(e.target.value)} placeholder="Description (optional)" />
+                <input className="input-field" required type="password" value={createPassword} onChange={e => setCreatePassword(e.target.value)} placeholder="Password" />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={createLoading}>
-                  {createLoading ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Creating…</> : 'Create Room'}
+                <button type="button" className="btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={createLoading} style={{ width: 'auto' }}>
+                  {createLoading ? 'Creating...' : 'Create Room'}
                 </button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
 
       {/* Join Room Modal */}
       {showJoinModal && (
         <div className="modal-overlay" onClick={() => setShowJoinModal(false)}>
-          <div className="glass modal-card" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h2 className="modal-title" style={{ marginBottom: 0 }}>Join Room</h2>
-              <button className="btn-ghost" onClick={() => setShowJoinModal(false)}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleJoinRoom} className="modal-form" style={{ marginTop: '1rem' }}>
-              <div>
-                <label className="input-label">Room ID</label>
-                <input className="input-field" required value={joinId} onChange={e => setJoinId(e.target.value)} placeholder="Paste the room ID here" />
-              </div>
-              <div>
-                <label className="input-label">Password</label>
-                <input className="input-field" required type="password" value={joinPassword} onChange={e => setJoinPassword(e.target.value)} placeholder="Enter room password" />
+          <motion.div 
+            className="modal-card" 
+            onClick={e => e.stopPropagation()}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+          >
+            <h2 className="modal-title">Join Room</h2>
+            <form onSubmit={handleJoinRoom}>
+              <div className="field-group">
+                <input className="input-field" required value={joinId} onChange={e => setJoinId(e.target.value)} placeholder="Room ID" />
+                <input className="input-field" required type="password" value={joinPassword} onChange={e => setJoinPassword(e.target.value)} placeholder="Password" />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowJoinModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={joinLoading}>
-                  {joinLoading ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Joining…</> : 'Join Room'}
+                <button type="button" className="btn-secondary" onClick={() => setShowJoinModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={joinLoading} style={{ width: 'auto' }}>
+                  {joinLoading ? 'Joining...' : 'Join Room'}
                 </button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
-    </>
+    </div>
   );
 }
